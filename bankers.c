@@ -599,8 +599,6 @@ bool is_safe_state(int safe_sequence[])
 // Function to process a thread resource request (IMPLEMENT THIS FUNCTION)
 bool thread_resource_request(int thread_id, int request[])
 {
-    /*** Implement the remaining code based on the provided HINT. ***/
-
     // Check if thread_id is valid
     if (thread_id < 0 || thread_id >= n)
     {
@@ -608,21 +606,51 @@ bool thread_resource_request(int thread_id, int request[])
         return false;
     }
 
-    // HINT: Check if request exceeds need
+    // Check if request exceeds need
+    bool exceeds_need = false;
     for (int j = 0; j < m; j++) {
         if (request[j] > need[thread_id][j]) {
-            printf("\n[AVOID]: Thread T%d requested more than its need!...\n", thread_id);
-            return false;
+            exceeds_need = true;
+            break;
         }
     }
-    // HINT: Check if request exceeds available
+    
+    if (exceeds_need) {
+        printf("\n[AVOID]: Thread T%d requested more than its need!...\n", thread_id);
+        printf("Request:   ");
+        for (int j = 0; j < m; j++) {
+            printf("%d%s", request[j], (j < m - 1) ? " " : "");
+        }
+        printf("\nNeed:      ");
+        for (int j = 0; j < m; j++) {
+            printf("%d%s", need[thread_id][j], (j < m - 1) ? " " : "");
+        }
+        printf("\n");
+        print_available();
+        return false;
+    }
+
+    // Check if request exceeds available
+    bool exceeds_available = false;
     for (int j = 0; j < m; j++) {
         if (request[j] > available[j]) {
-            printf("\n[AVOID]: Thread T%d must wait, resources not available!...\n", thread_id);
-            return false;
+            exceeds_available = true;
+            break;
         }
     }
-    // HINT: Try to allocate resources (temporarily)
+    
+    if (exceeds_available) {
+        printf("\n[AVOID]: Thread T%d must wait, resources not available!...\n", thread_id);
+        printf("Request:   ");
+        for (int j = 0; j < m; j++) {
+            printf("%d%s", request[j], (j < m - 1) ? " " : "");
+        }
+        printf("\n");
+        print_available();
+        return false;
+    }
+
+    // Temporarily allocate resources
     for (int j = 0; j < m; j++) {
         available[j] -= request[j];
         allocation[thread_id][j] += request[j];
@@ -632,26 +660,26 @@ bool thread_resource_request(int thread_id, int request[])
     int temp_safe_sequence[MAX_THREADS];
     bool safe = is_safe_state(temp_safe_sequence);
 
-    // HINT: Check if resulting state is safe
     if (safe) {
         printf("\n[GRANT]: Request granted. System is in Safe State...\n");
-        printf("Safe Sequence: <");
+        printf("The Safe Sequence is: <");
         for (int i = 0; i < n; i++) {
             printf("T%d%s", temp_safe_sequence[i], (i < n - 1) ? ", " : "");
         }
         printf(">\n");
+        print_available();
         return true;
     } else {
+        // Roll back the changes
+        for (int j = 0; j < m; j++) {
+            available[j] += request[j];
+            allocation[thread_id][j] -= request[j];
+            need[thread_id][j] += request[j];
+        }
 
-    // HINT: Roll back the changes
-    for (int j = 0; j < m; j++) {
-        available[j] += request[j];
-        allocation[thread_id][j] -= request[j];
-        need[thread_id][j] += request[j];
+        printf("\n[AVOID]: Request denied. System will not be in a safe state if this request is granted!...\n");
+        printf("Resources have been rolled-back to their previous state...\n");
+        print_available();
+        return false;
     }
-
-    printf("\n[AVOID]: Request denied. System will not be in a safe state if this request is granted!...\n");
-    printf("Resources have been rolled-back to their previous state...\n");
-    return false;
-}
 }
